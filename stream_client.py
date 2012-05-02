@@ -60,7 +60,7 @@ class TwitterStream(object):
                     filename=self.log_file,
                     when='midnight',
                     backupCount=7)
-            self.logger.addHandler()
+            self.logger.addHandler(handler)
         else:
             self.logger.addHandler(NullHandler())
 
