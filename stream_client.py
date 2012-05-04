@@ -9,7 +9,7 @@ from tornado.ioloop import IOLoop
 from tornado.iostream import IOStream, SSLIOStream
 
 try:
-    from logging.handlers import NullHandler
+    from logging import NullHandler
 except ImportError:
     class NullHandler(logging.Handler):
         def emit(self, record):
@@ -37,7 +37,7 @@ class TwitterStream(object):
     A class for consuming data from Twitter's realtime streaming api.
     """
 
-    def __init__(self, config, ioloop=None, path=None, callback=None,
+    def __init__(self, config, ioloop=None, path=None, callback=None, 
             reconnect_on_close=True):
         self._ioloop = ioloop or IOLoop.instance() 
         self._sock = None
@@ -50,16 +50,11 @@ class TwitterStream(object):
         self._password = config.password
         self.callback = callback
 
-        logging.basicConfig(filename=config.log_file,
-                level=config.log_level)
         self.logger = logging.getLogger(config.logger_name)
         self.logger.setLevel(config.log_level)
-        if self.logging_enabled:
+        if config.logging_enabled:
             # TODO: Allow for more control over configuration
-            handler = logging.handlers.TimedRotatingFileHandler(
-                    filename=self.log_file,
-                    when='midnight',
-                    backupCount=7)
+            handler = logging.FileHandler(filename=config.log_file)
             self.logger.addHandler(handler)
         else:
             self.logger.addHandler(NullHandler())
@@ -81,13 +76,13 @@ class TwitterStream(object):
         }
 
     def _build_basic_auth_header(self):
-        assert self._username and self._password, \
-                "Username and password required"
-        auth_str = base64.encodestring(
-                '%s:%s' % (self._username,self._password)).strip()
-        return {
-                'Authorization': 'Basic %s' % auth_str
-        }
+        if self._username and self._password:
+            auth_str = base64.encodestring(
+                    '%s:%s' % (self._username,self._password)).strip()
+            return {
+                    'Authorization': 'Basic %s' % auth_str
+            }
+        return {}
 
     def _build_oauth_header(self):
         assert self._consumer_token and self._consumer_secret, \
@@ -173,5 +168,8 @@ class TwitterStream(object):
 
 
 if __name__ == "__main__":
-    stream = TwitterStream()
+    def callback(status):
+        print status
+    config = Config(username='username', password='password')
+    stream = TwitterStream(config, callback=callback)
     stream.start()
